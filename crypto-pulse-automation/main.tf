@@ -1,41 +1,68 @@
-# --- Core Infrastructure ---
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.0"
+    }
+  }
+
+  backend "s3" {
+    bucket = "cryptopulse-terraform-state"
+    key    = "terraform.tfstate"
+    region = "us-east-1"
+  }
+}
+
+provider "aws" {
+  region  = var.aws_region
+  profile = var.aws_profile
+}
+
+# --- VPC (network foundation) ---
+module "vpc" {
+  source = "./modules/vpc"
+}
+
+# --- S3 Static Site ---
 module "s3" {
-  source      = "./modules/s3-static-site"
+  source      = "./modules/s3"
   bucket_name = var.bucket_name
 }
 
+# --- CloudFront Distribution ---
 module "cloudfront" {
   source           = "./modules/cloudfront"
-  s3_bucket_domain = module.s3.bucket_name
+  s3_bucket_domain = module.s3.bucket_domain
 }
 
-module "route53" {
-  source              = "./modules/route53"
-  zone_id             = var.zone_id
-  domain_name         = var.domain_name
-  cloudfront_domain   = module.cloudfront.cloudfront_url
-  cloudfront_zone_id  = var.cloudfront_zone_id
+# --- Route53 Health Check ---
+module "route53_health" {
+  source = "./modules/route53_health"
+  fqdn   = module.cloudfront.cloudfront_url
 }
 
-# --- Phase 2: Resilience & Monitoring ---
+# --- SNS Alerts ---
+module "sns" {
+  source      = "./modules/sns"
+  topic_name  = var.topic_name
+  alert_email = var.alert_email
+}
+
+# --- Monitoring (Lambda + IAM + CloudWatch) ---
 module "monitoring" {
-  source          = "./modules/monitoring"
-  lambda_role_arn = var.lambda_role_arn
+  source        = "./modules/monitoring"
+  sns_topic_arn = module.sns.sns_topic_arn
 }
 
-module "healthcheck" {
-  source      = "./modules/route53-healthcheck"
-  domain_name = var.domain_name
-}
-
-# --- Phase 3: Advanced ---
-module "rds" {
-  source       = "./modules/rds"
+# --- RDS with Replica ---
+module "rds_replica" {
+  source       = "./modules/rds_replica"
   db_name      = var.db_name
+  subnet_ids   = [module.vpc.public_a_id, module.vpc.public_b_id]
   replica_zone = var.replica_zone
-}
-
-module "kinesis" {
-  source      = "./modules/kinesis"
-  stream_name = var.stream_name
+  db_password  = var.db_password
 }

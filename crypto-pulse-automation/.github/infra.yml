@@ -1,5 +1,4 @@
 deploy:
-  needs: validate
   runs-on: ubuntu-latest
   environment: production
   permissions:
@@ -14,29 +13,23 @@ deploy:
         role-to-assume: ${{ secrets.AWS_GITHUB_ROLE_ARN }}
         aws-region: ${{ env.AWS_REGION }}
 
-    - uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: ${{ env.TF_VERSION }}
-
-    - run: terraform init -input=false
-    - run: terraform plan -out=tfplan.binary
-    - run: terraform apply -auto-approve tfplan.binary
-
-    # ✅ Debug step to confirm files before sync
+    # Debug step to confirm files are present
     - name: List repo contents
       run: ls -R
 
-    # ✅ Sync only site files (exclude configs)
-    - name: Sync files to S3
+    # Sync only site files (HTML, CSS, JS, images) to S3
+    - name: Sync site files to S3
       run: |
         aws s3 sync . s3://cryptopulse-site-primary/ --delete \
-          --exclude ".git/*" \
-          --exclude ".github/*" \
-          --exclude "terraform/*" \
-          --exclude "*.tf" \
-          --exclude "*.tfstate*" \
-          --exclude "*.yml" \
-          --exclude "*.yaml"
+          --exclude "*" \
+          --include "*.html" \
+          --include "*.css" \
+          --include "*.js" \
+          --include "*.png" \
+          --include "*.jpg" \
+          --include "*.jpeg" \
+          --include "*.gif"
 
+    # Invalidate CloudFront cache so new files are served
     - name: Invalidate CloudFront cache
       run: aws cloudfront create-invalidation --distribution-id ${{ secrets.CF_DIST_ID }} --paths "/*"

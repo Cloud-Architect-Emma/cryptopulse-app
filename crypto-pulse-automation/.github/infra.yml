@@ -19,9 +19,14 @@ deploy:
         terraform_version: ${{ env.TF_VERSION }}
 
     - run: terraform init -input=false
+    - run: terraform plan -out=tfplan.binary
     - run: terraform apply -auto-approve tfplan.binary
 
-    # ✅ Sync from repo root (where your HTMLs live)
+    # ✅ Debug step to confirm files before sync
+    - name: List repo contents
+      run: ls -R
+
+    # ✅ Sync only site files (exclude configs)
     - name: Sync files to S3
       run: |
         aws s3 sync . s3://cryptopulse-site-primary/ --delete \

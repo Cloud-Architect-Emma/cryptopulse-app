@@ -1,9 +1,0 @@
-# Ignore Windows system files
-*.regtrans-ms
-NTUSER.DAT*
-*.LOG1
-*.LOG2
-*.ini
-
-# Ignore parent directories
-../*

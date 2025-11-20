@@ -13,7 +13,7 @@ permissions:
 env:
   AWS_REGION: us-east-1
   S3_BUCKET_NAME: cryptopulse-site
-  CLOUDFRONT_DISTRIBUTION_ID: E3TTXUBJD63TGD
+  CLOUDFRONT_DISTRIBUTION_ID: E3TTXUBJD63TGD  # Replace with the correct ID from CloudFront
 
 jobs:
   deploy:
@@ -51,6 +51,9 @@ jobs:
 
       - name: Invalidate CloudFront cache
         run: |
-          aws cloudfront create-invalidation \
+          INVALIDATION_ID=$(aws cloudfront create-invalidation \
             --distribution-id $CLOUDFRONT_DISTRIBUTION_ID \
-            --paths "/*"
+            --paths "/*" \
+            --query 'Invalidation.Id' --output text)
+          echo "Invalidation ID: $INVALIDATION_ID"
+          aws cloudfront wait invalidation-completed --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --id $INVALIDATION_ID

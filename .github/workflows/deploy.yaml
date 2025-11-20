@@ -13,7 +13,7 @@ permissions:
 env:
   AWS_REGION: us-east-1
   S3_BUCKET_NAME: cryptopulse-site
-  CLOUDFRONT_DISTRIBUTION_ID: E3TTXUBJD63TGD  # Replace with the correct ID from CloudFront
+  CLOUDFRONT_DISTRIBUTION_ID: E27ORUC842G9HO
 
 jobs:
   deploy:
@@ -29,26 +29,29 @@ jobs:
           role-to-assume: ${{ secrets.IAM_ROLE_S3 }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # Debug: confirm repo files
       - name: List repo files
         run: ls -lh $GITHUB_WORKSPACE
 
+      # ✅ Sync only site assets
       - name: Sync site files to S3
         run: |
           aws s3 sync $GITHUB_WORKSPACE s3://$S3_BUCKET_NAME/ --delete --exact-timestamps \
-            --exclude ".git/*" \
-            --exclude ".github/*" \
-            --exclude "README.md" \
+            --exclude "*" \
             --include "*.html" \
             --include "*.css" \
             --include "*.js" \
             --include "*.png" \
             --include "*.jpg" \
             --include "*.jpeg" \
-            --include "*.gif"
+            --include "*.gif" \
+            --include "*.svg"
 
-      - name: Confirm S3 sync
-        run: aws s3 ls s3://$S3_BUCKET_NAME/
+      # Debug: confirm docs.html uploaded
+      - name: Confirm docs.html upload
+        run: aws s3 ls s3://$S3_BUCKET_NAME/docs.html
 
+      # Invalidate CloudFront cache
       - name: Invalidate CloudFront cache
         run: |
           INVALIDATION_ID=$(aws cloudfront create-invalidation \
@@ -56,4 +59,6 @@ jobs:
             --paths "/*" \
             --query 'Invalidation.Id' --output text)
           echo "Invalidation ID: $INVALIDATION_ID"
-          aws cloudfront wait invalidation-completed --distribution-id $CLOUDFRONT_DISTRIBUTION_ID --id $INVALIDATION_ID
+          aws cloudfront wait invalidation-completed \
+            --distribution-id $CLOUDFRONT_DISTRIBUTION_ID \
+            --id $INVALIDATION_ID

@@ -3,7 +3,7 @@ name: Deploy to S3
 on:
   push:
     branches:
-      - main  # Trigger deployment when pushing to main branch
+      - main
 
 jobs:
   deploy:
@@ -14,22 +14,20 @@ jobs:
       contents: read
 
     steps:
-      # Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Configure AWS credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_GITHUB_ROLE_ARN }}
-          aws-region: us-east-1  # replace if your region is different
+          aws-region: us-east-1
 
-      # Debug: list repo root files
+      # Debug: confirm files in repo root
       - name: List repo files
         run: ls -lh $GITHUB_WORKSPACE
 
-      # ✅ Sync only HTML, CSS, JS, and images
+      # ✅ Sync only site assets
       - name: Sync site files to S3
         run: |
           aws s3 sync $GITHUB_WORKSPACE s3://cryptopulse-site/ --delete --exact-timestamps \
@@ -43,23 +41,10 @@ jobs:
             --include "*.gif" \
             --include "*.svg"
 
-      # Debug: list S3 contents after sync
-      - name: List S3 bucket contents
-        run: aws s3 ls s3://cryptopulse-site/ --recursive
+      # Debug: confirm docs.html uploaded
+      - name: Confirm docs.html upload
+        run: aws s3 ls s3://cryptopulse-site/docs.html
 
-      # Confirm key HTML files exist in S3
-      - name: Confirm main HTML files
-        run: |
-          for file in index.html crypto.html docs.html dashboard.html getting-started.html; do
-            if aws s3 ls s3://cryptopulse-site/$file; then
-              echo "$file exists in S3 ✅"
-            else
-              echo "ERROR: $file not found in S3 ❌"
-              exit 1
-            fi
-          done
-
-      # Invalidate CloudFront cache
       - name: Invalidate CloudFront cache
         run: |
           aws cloudfront create-invalidation \

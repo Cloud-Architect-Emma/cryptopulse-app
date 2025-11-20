@@ -3,7 +3,7 @@ name: Deploy to S3
 on:
   push:
     branches:
-      - main  # Trigger deployment on push to main branch
+      - main
 
 jobs:
   deploy:
@@ -14,41 +14,53 @@ jobs:
       contents: read
 
     steps:
-      # Step 1: Checkout the repo
+      # 1. Checkout the repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Configure AWS credentials
+      # 2. Configure AWS credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_GITHUB_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: us-east-1  # replace with your region
 
-      # Step 3: Debug - list repo contents
-      - name: List repository files
-        run: |
-          echo "Repo root contents:"
-          ls -lh
-          echo "All files recursively:"
-          ls -R
+      # 3. Debug - list repo root files
+      - name: List repo root files
+        run: ls -lh $GITHUB_WORKSPACE
 
-      # Step 4: Sync all repo root files to S3 bucket root
-      - name: Sync repo root to S3 bucket
+      # 4. Sync only HTML, CSS, JS, images to S3 bucket root
+      - name: Sync site files to S3
         run: |
-          echo "Syncing repo root to S3 bucket..."
-          aws s3 sync . s3://cryptopulse-site/ --delete \
+          aws s3 sync $GITHUB_WORKSPACE s3://cryptopulse-site/ --delete \
             --exclude ".git/*" \
             --exclude ".github/*" \
-            --exclude "README.md"
+            --exclude "README.md" \
+            --exclude "*.md" \
+            --include "*.html" \
+            --include "*.css" \
+            --include "*.js" \
+            --include "*.png" \
+            --include "*.jpg" \
+            --include "*.jpeg" \
+            --include "*.gif"
           
-          echo "Listing S3 bucket contents after sync:"
+          echo "S3 bucket contents after sync:"
           aws s3 ls s3://cryptopulse-site/
 
-      # Step 5: Invalidate CloudFront cache
+      # 5. Confirm docs.html exists in S3
+      - name: Check if docs.html exists
+        run: |
+          if aws s3 ls s3://cryptopulse-site/docs.html; then
+            echo "docs.html successfully uploaded!"
+          else
+            echo "ERROR: docs.html not found in S3!"
+            exit 1
+          fi
+
+      # 6. Invalidate CloudFront cache
       - name: Invalidate CloudFront cache
         run: |
-          echo "Invalidating CloudFront cache..."
           aws cloudfront create-invalidation \
             --distribution-id ${{ secrets.CF_DIST_ID }} \
             --paths "/*"

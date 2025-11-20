@@ -4,43 +4,37 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:  # allows manual triggering
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
 
 env:
   AWS_REGION: us-east-1
-  S3_BUCKET: cryptopulse-site
-  CLOUDFRONT_DIST_ID: E3TTXUBJD63TGD
-
-permissions:
-  id-token: write   # required for GitHub OIDC
-  contents: read    # required for actions/checkout
+  S3_BUCKET_NAME: cryptopulse-site
+  CLOUDFRONT_DISTRIBUTION_ID: E3TTXUBJD63TGD
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Configure AWS credentials using OIDC
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.IAM_ROLE_S3 }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # Step 3: Debug - list repo root files
-      - name: List repository files
-        run: |
-          echo "Files in repo root:"
-          ls -lh $GITHUB_WORKSPACE
+      - name: List repo files
+        run: ls -lh $GITHUB_WORKSPACE
 
-      # Step 4: Sync all site files to S3
       - name: Sync site files to S3
         run: |
-          aws s3 sync "$GITHUB_WORKSPACE" "s3://$S3_BUCKET/" --delete --exact-timestamps \
+          aws s3 sync $GITHUB_WORKSPACE s3://$S3_BUCKET_NAME/ --delete --exact-timestamps \
             --exclude ".git/*" \
             --exclude ".github/*" \
             --exclude "README.md" \
@@ -52,22 +46,11 @@ jobs:
             --include "*.jpeg" \
             --include "*.gif"
 
-      # Step 5: Debug - confirm docs.html upload
-      - name: Confirm docs.html in S3
-        run: |
-          aws s3 ls "s3://$S3_BUCKET/docs.html"
-          echo "Hash of docs.html in S3:"
-          aws s3 cp "s3://$S3_BUCKET/docs.html" - | md5sum
+      - name: Confirm S3 sync
+        run: aws s3 ls s3://$S3_BUCKET_NAME/
 
-      # Step 6: Invalidate CloudFront cache
       - name: Invalidate CloudFront cache
         run: |
-          INVALIDATION_ID=$(aws cloudfront create-invalidation \
-            --distribution-id "$CLOUDFRONT_DIST_ID" \
-            --paths "/*" \
-            --query 'Invalidation.Id' --output text)
-          echo "Invalidation ID: $INVALIDATION_ID"
-          # Wait for invalidation to complete
-          aws cloudfront wait invalidation-completed \
-            --distribution-id "$CLOUDFRONT_DIST_ID" \
-            --id "$INVALIDATION_ID"
+          aws cloudfront create-invalidation \
+            --distribution-id $CLOUDFRONT_DISTRIBUTION_ID \
+            --paths "/*"

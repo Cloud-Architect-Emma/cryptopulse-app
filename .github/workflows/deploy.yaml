@@ -1,76 +1,19 @@
-name: Deploy to S3
+name: Test AWS OIDC
 
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch: # allows manual trigger for testing
+on: [workflow_dispatch]
 
 jobs:
-  deploy:
+  test:
     runs-on: ubuntu-latest
-    environment: production
     permissions:
       id-token: write
       contents: read
-
     steps:
-      # Step 1: Checkout repository
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # Step 2: Configure AWS credentials via OIDC
-      - name: Configure AWS credentials
+      - uses: actions/checkout@v4
+      - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_GITHUB_ROLE_ARN }}
           aws-region: us-east-1
-
-      # Step 3: Debug - List root files
-      - name: List repository files
-        run: |
-          echo "Files in repo root:"
-          ls -lh $GITHUB_WORKSPACE
-
-      # Step 4: Sync all site files to S3
-      - name: Sync site files to S3
-        run: |
-          echo "Syncing files to S3 bucket..."
-          aws s3 sync $GITHUB_WORKSPACE s3://cryptopulse-site/ --delete --exact-timestamps \
-            --exclude ".git/*" \
-            --exclude ".github/*" \
-            --exclude "README.md" \
-            --exclude "*.md" \
-            --include "*.html" \
-            --include "*.css" \
-            --include "*.js" \
-            --include "*.png" \
-            --include "*.jpg" \
-            --include "*.jpeg" \
-            --include "*.gif"
-          echo "S3 bucket contents after sync:"
-          aws s3 ls s3://cryptopulse-site/
-
-      # Step 5: Optional - Confirm key files uploaded
-      - name: Confirm docs.html upload
-        run: |
-          if aws s3 ls s3://cryptopulse-site/docs.html; then
-            echo "docs.html successfully uploaded!"
-          else
-            echo "ERROR: docs.html not found in S3!"
-            exit 1
-          fi
-
-      # Step 6: Invalidate CloudFront cache
-      - name: Invalidate CloudFront cache
-        run: |
-          INVALIDATION_ID=$(aws cloudfront create-invalidation \
-            --distribution-id ${{ secrets.CF_DIST_ID }} \
-            --paths "/*" \
-            --query 'Invalidation.Id' --output text)
-          echo "Invalidation ID: $INVALIDATION_ID"
-          echo "Waiting for invalidation to complete..."
-          aws cloudfront wait invalidation-completed \
-            --distribution-id ${{ secrets.CF_DIST_ID }} \
-            --id $INVALIDATION_ID
-          echo "CloudFront invalidation completed!"
+      - name: List S3 bucket
+        run: aws s3 ls s3://cryptopulse-site/

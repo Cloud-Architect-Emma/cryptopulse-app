@@ -4,47 +4,43 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:  # Allows manual triggering for testing
-
-# Workflow-level permissions
-permissions:
-  id-token: write   # Needed for GitHub OIDC authentication
-  contents: read    # Needed to checkout repo
+  workflow_dispatch:  # allows manual triggering
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION }}
-  S3_BUCKET: ${{ secrets.S3_BUCKET_NAME }}
-  CLOUDFRONT_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+  AWS_REGION: us-east-1
+  S3_BUCKET: cryptopulse-site
+  CLOUDFRONT_DIST_ID: E3TTXUBJD63TGD
+
+permissions:
+  id-token: write   # required for GitHub OIDC
+  contents: read    # required for actions/checkout
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    # Job-level permissions (optional, overrides workflow-level)
-    permissions:
-      id-token: write
-      contents: read
-
     steps:
-      # 1. Checkout repository
+      # Step 1: Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Configure AWS credentials using OIDC
+      # Step 2: Configure AWS credentials using OIDC
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.IAM_ROLE_S3 }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      # 3. Debug: list repo root files
-      - name: List repo root files
-        run: ls -lh $GITHUB_WORKSPACE
-
-      # 4. Sync all HTML, CSS, JS, and images to S3
-      - name: Sync files to S3
+      # Step 3: Debug - list repo root files
+      - name: List repository files
         run: |
-          aws s3 sync $GITHUB_WORKSPACE s3://$S3_BUCKET/ --delete --exact-timestamps \
+          echo "Files in repo root:"
+          ls -lh $GITHUB_WORKSPACE
+
+      # Step 4: Sync all site files to S3
+      - name: Sync site files to S3
+        run: |
+          aws s3 sync "$GITHUB_WORKSPACE" "s3://$S3_BUCKET/" --delete --exact-timestamps \
             --exclude ".git/*" \
             --exclude ".github/*" \
             --exclude "README.md" \
@@ -56,24 +52,22 @@ jobs:
             --include "*.jpeg" \
             --include "*.gif"
 
-      # 5. Confirm docs.html uploaded
-      - name: Check docs.html in S3
+      # Step 5: Debug - confirm docs.html upload
+      - name: Confirm docs.html in S3
         run: |
-          if aws s3 ls s3://$S3_BUCKET/docs.html; then
-            echo "docs.html uploaded successfully!"
-          else
-            echo "ERROR: docs.html not found in S3!"
-            exit 1
-          fi
+          aws s3 ls "s3://$S3_BUCKET/docs.html"
+          echo "Hash of docs.html in S3:"
+          aws s3 cp "s3://$S3_BUCKET/docs.html" - | md5sum
 
-      # 6. Invalidate CloudFront cache
+      # Step 6: Invalidate CloudFront cache
       - name: Invalidate CloudFront cache
         run: |
           INVALIDATION_ID=$(aws cloudfront create-invalidation \
-            --distribution-id $CLOUDFRONT_ID \
+            --distribution-id "$CLOUDFRONT_DIST_ID" \
             --paths "/*" \
             --query 'Invalidation.Id' --output text)
           echo "Invalidation ID: $INVALIDATION_ID"
+          # Wait for invalidation to complete
           aws cloudfront wait invalidation-completed \
-            --distribution-id $CLOUDFRONT_ID \
-            --id $INVALIDATION_ID
+            --distribution-id "$CLOUDFRONT_DIST_ID" \
+            --id "$INVALIDATION_ID"

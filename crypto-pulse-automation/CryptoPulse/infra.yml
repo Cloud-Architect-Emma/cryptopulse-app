@@ -1,0 +1,52 @@
+name: Deploy to S3
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ROLE_ARN }}
+          aws-region: us-east-1
+
+      # Debug: confirm files in repo root
+      - name: List repo files
+        run: ls -lh $GITHUB_WORKSPACE
+
+      # ✅ Sync only site assets
+      - name: Sync site files to S3
+        run: |
+          aws s3 sync $GITHUB_WORKSPACE s3://cryptopulse-site/ --delete --exact-timestamps \
+            --exclude "*" \
+            --include "*.html" \
+            --include "*.css" \
+            --include "*.js" \
+            --include "*.png" \
+            --include "*.jpg" \
+            --include "*.jpeg" \
+            --include "*.gif" \
+            --include "*.svg"
+
+      # Debug: confirm docs.html uploaded
+      - name: Confirm docs.html upload
+        run: aws s3 ls s3://cryptopulse-site/docs.html
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CF_DIST_ID }} \
+            --paths "/*"

@@ -4,60 +4,53 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
-
-env:
-  AWS_REGION: ${{ secrets.AWS_REGION }}
-  S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
-
-permissions:
-  id-token: write
-  contents: read
+  workflow_dispatch:  # Allows manual triggering
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      id-token: write  # Required for OIDC
+      contents: read
 
     steps:
-      # 1. Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Configure AWS credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_GITHUB_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.IAM_ROLE_S3 }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-      # 3. Debug: list repo root files
-      - name: List repository root files
+      - name: List and hash repo files
         run: |
           echo "Files in repo root:"
           ls -lh $GITHUB_WORKSPACE
+          echo "Hash of docs.html (if exists):"
+          if [ -f "$GITHUB_WORKSPACE/docs.html" ]; then
+            md5sum $GITHUB_WORKSPACE/docs.html
+          else
+            echo "docs.html not found in repo root!"
+          fi
 
-      # 4. Sync all site assets to S3 bucket root
       - name: Sync site files to S3
         run: |
-          aws s3 sync $GITHUB_WORKSPACE s3://${{ env.S3_BUCKET_NAME }}/ --delete --exact-timestamps \
-            --exclude ".git/*" \
-            --exclude ".github/*" \
-            --exclude "README.md" \
-            --exclude "*.md" \
+          aws s3 sync $GITHUB_WORKSPACE s3://${{ secrets.S3_BUCKET_NAME }}/ --delete --exact-timestamps \
+            --exclude "*" \
             --include "*.html" \
             --include "*.css" \
             --include "*.js" \
             --include "*.png" \
-            --include "*.jpg" \
-            --include "*.jpeg" \
-            --include "*.gif"
+            --include "*.jpg"
 
-      # 5. Debug: confirm S3 contents
-      - name: List S3 bucket contents
-        run: aws s3 ls s3://${{ env.S3_BUCKET_NAME }}/
+      - name: Confirm docs.html upload and hash
+        run: |
+          aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }}/docs.html
+          echo "Hash of S3 docs.html:"
+          aws s3 cp s3://${{ secrets.S3_BUCKET_NAME }}/docs.html - | md5sum
 
-      # 6. Invalidate CloudFront cache
       - name: Invalidate CloudFront cache
         run: |
           INVALIDATION_ID=$(aws cloudfront create-invalidation \
@@ -65,6 +58,4 @@ jobs:
             --paths "/*" \
             --query 'Invalidation.Id' --output text)
           echo "Invalidation ID: $INVALIDATION_ID"
-          aws cloudfront wait invalidation-completed \
-            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
-            --id $INVALIDATION_ID
+          aws cloudfront wait invalidation-completed --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --id $INVALIDATION_ID

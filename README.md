@@ -1,101 +1,111 @@
 # CryptoPulse-app – End-to-End AWS + GitHub OIDC DevOps Project
 
-CryptoPulse is a production-ready static crypto insights application built with an enterprise-grade AWS architecture, full CI/CD automation using GitHub Actions, and secure deployments using OIDC (no secret keys).
+CryptoPulse is a production-ready static crypto insights application built with an enterprise-grade AWS architecture, full CI/CD automation using GitHub Actions, and secure deployments using OIDC (no long-lived AWS keys).
 
-This project demonstrates real-world DevOps + Cloud Architecture capabilities: Infrastructure-as-Code, automated deployments, monitoring, secure IAM roles, and fast global delivery.
+This project demonstrates real-world DevOps + Cloud Architecture capabilities: IaC, automated deployments, monitoring, secure IAM role assumption, and global static site delivery.
 
-🌐 **Live Demo**
+🌐 Live Demo
 
 CryptoPulse-app Live App (GitHub Pages)
 https://cloud-architect-emma.github.io/cryptopulse-app/
 
-Available for cloning
-Explore, fork, improve the UI
-Ideal for DevOps/Cloud portfolio demonstration
+The app now runs on GitHub Pages (CloudFront disabled in the latest update).
+Still fully available for cloning, learning, customisation, and DevOps demonstrations.
 
-##  Architecture Overview
+## Get Started Page Added
+New UI page: get-started.html
+New components & improved onboarding flow.
 
-This project uses a full production-like AWS stack:
+**Architecture Overview**
 
-AWS S3 → static website hosting
+The project demonstrates a full production-like AWS deployment workflow:
 
-AWS CloudFront → CDN distribution (used originally)
+AWS S3 — static hosting (initial deployment model)
 
-AWS IAM + OIDC → secure role-based GitHub authentication
+AWS CloudFront — CDN distribution (previously used; still included in Terraform setup for demonstration)
 
-AWS CloudWatch → logging + metrics + alarms
+AWS IAM + OIDC — secure GitHub authentication
 
-GitHub Actions CI/CD → automated build, deployment & invalidation
+AWS CloudWatch — logging, metrics, alarms
 
-Terraform → Infrastructure as Code (IaC) for AWS resources
+Terraform — IaC for AWS
 
-## Architecture Diagram:
-![Architecture Diagram](screenshots/OIDC%20App.gif)
+GitHub Actions — full CI/CD automation
 
-📁 For more screenshots, open the screenshots folder in the repository.
+GitHub Pages — latest hosting platform for public demo
 
-## CI/CD Pipeline (AWS OIDC — No Access Keys Required)
+**Architecture Diagram**
+
+📁 **For more images, open the screenshots folder**.
+
+New UI Pages Added (Update)
+
+The repository UI now includes:
+
+get-started.html (new)
+
+Internal navigation updates
+
+Refreshed layout, colours, and onboarding steps
+
+📁 **All screenshots of the new UI are located in**:
+screenshots/
+
+CI/CD Pipeline (AWS OIDC — No Access Keys Required)
 
 This project uses GitHub Actions + AWS IAM OIDC to deploy securely:
 
-No long-lived AWS IAM secrets
+No AWS IAM Secrets
 
-GitHub automatically requests short-lived JWT tokens
+GitHub issues short-lived JWT tokens
 
-Pipeline assumes an IAM role with trust relationship
+Pipeline assumes IAM role
 
-S3 sync + CloudFront invalidation happens automatically
+S3 sync + CloudFront invalidation (where applicable)
 
-## Workflow Includes:
+Even though the live demo uses GitHub Pages, the CI pipeline remains AWS-ready.
+
+Workflow Includes
 
 Code validation
 
-Upload to S3
+Build + Upload to S3
 
-Cache invalidation
+Optional CloudFront invalidation
 
-Error handling & rollback safety
+Error handling
 
-You can request the workflow YAML and Terraform snippets inside the repo or read them directly under:
+Rollback safety
 
-.github/workflows/deploy.yml  
+**YAML workflow**:
+.github/workflows/deploy.yml
+
+Terraform infra:
 terraform/
 
-## Tech Stack
-```
+**Tech Stack**
 Frontend
-
 HTML
-
 CSS
-
 JavaScript
 
-AWS
-
+**AWS**
 S3
-
 CloudFront
-
 IAM
-
 CloudWatch
-
-SNS (for optional alerts)
-
+SNS (optional alerts)
 Route 53 (health checks)
-```
 
 ## DevOps
-```
 GitHub Actions
-
 OIDC Authentication
-```
-## Terraform
-📁 Project Structure
+
+**Project Structure**
 .
 ├── index.html
+├── crypto.html
+├── get-started.html     ← new update
 ├── assets/
 ├── styles/
 ├── scripts/
@@ -105,25 +115,26 @@ OIDC Authentication
 │       └── deploy.yml
 └── screenshots/
         ├── OIDC App.gif
-        └── *.png (other images)
+        └── *.png (new UI screens)
 
 ## How to Deploy This Yourself
-Clone the Repository
+1. Clone the Repo
 git clone https://github.com/Cloud-Architect-Emma/cryptopulse-app.git
 cd cryptopulse-app
 
-Modify the UI (optional)
+2. Modify the UI (optional)
 
-The app is pure HTML/CSS/JS — very easy to customize.
+All pages are pure HTML/CSS/JS — very easy to edit or restyle.
 
-Deploy Infra with Terraform
+3. Deploy AWS Infrastructure (optional)
 cd terraform
 terraform init
 terraform apply
 
-Push Code → Automatic Deployment
+4. Push Code → Auto Deployment
 
-GitHub Actions + OIDC will deploy automatically to your S3 bucket.
+GitHub Actions automatically deploys to S3 (if enabled)
+or updates GitHub Pages (current live hosting).
 
 ## Monitoring & Observability
 
@@ -133,30 +144,27 @@ CloudWatch Logs
 
 SNS Notifications
 
-Health Checks via Route 53
+Route 53 Health Checks
 
-Error rate tracking
-
-Latency metrics
+Error tracking & latency metrics
 
 ## Contributing
 
-Want to improve the app UI, add animations, or enhance the pipeline?
-Feel free to:
+Want to improve the UI, animations, architectural setup, or CI pipeline?
 
 Fork the repo
 
 Open a PR
 
-Add new features
+Add enhancements
 
 **Author**
 
-Emmanuela (Cloud Architect & DevOps Engineer)
+Emmanuela
+Cloud Architect & DevOps Engineer
 GitHub: https://github.com/Cloud-Architect-Emma
 
-**Support the Project**
+⭐ Support the Project
 
-If you find this helpful, kindly ⭐ star the repository.
-
-It helps visibility and supports the open-source journey.
+If this repo helps you, please star it.
+It improves visibility for other DevOps/Cloud learners.

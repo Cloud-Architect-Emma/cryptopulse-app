@@ -36,6 +36,8 @@ GitHub Pages — latest hosting platform for public demo
 
 **Architecture Diagram**
 
+app-img/OIDC App.gif
+
 📁 **For more images, open the screenshots folder**.
 
 New UI Pages Added (Update)
